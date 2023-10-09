@@ -1,5 +1,7 @@
 #ifndef MATH_H
 
+#include "defines.h"
+
 typedef struct v2
 {
     f32 x;
