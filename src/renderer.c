@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "defines.h"
 #include "math.h"
 #include "renderer.h"

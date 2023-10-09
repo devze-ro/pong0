@@ -1,5 +1,7 @@
 #ifndef DEFINES_H
 
+#include <stdint.h>
+
 #define global static
 #define local static
 #define internal static
