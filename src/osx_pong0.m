@@ -10,9 +10,10 @@
 #endif
 
 BackBuffer backBuffer;
-uint32_t frameCount = 0;
+u32 frameCount = 0;
 NSTimeInterval startTime = 0;
 NSTimeInterval lastFrameRateCheck = 0;
+f32 timePerFrame = 0;
 
 #ifdef CVDISPLAYLINK_REFRESH
 CVDisplayLinkRef displayLink;
@@ -86,6 +87,16 @@ CVReturn MyDisplayLinkCallback(
     CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
     CVDisplayLinkSetOutputCallback(displayLink, MyDisplayLinkCallback, (__bridge void *)(self));
     CVDisplayLinkStart(displayLink);
+
+    CVTime refreshPeriod = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(displayLink);
+    if (refreshPeriod.flags & kCVTimeIsIndefinite) {
+        NSLog(@"Refresh rate is indefinite");
+    } else {
+        timePerFrame = refreshPeriod.timeValue / (double)refreshPeriod.timeScale;
+
+        NSLog(@"time per frame: %f sec", timePerFrame);
+    }
+
 #else
     printf("Using timer to refresh!\n");
 
@@ -100,7 +111,7 @@ CVReturn MyDisplayLinkCallback(
 #ifdef CVDISPLAYLINK_REFRESH
 CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext) {
     AppDelegate *self = (__bridge AppDelegate *)displayLinkContext;
-    update_game(&backBuffer);
+    update_game(&backBuffer, timePerFrame);
     CustomView *view = (CustomView *)self.window.contentView;
     dispatch_async(dispatch_get_main_queue(), ^{
         [view setNeedsDisplay:YES];
@@ -113,7 +124,7 @@ CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* 
 #else
 - (void)timerFired:(NSTimer *)timer {
     // Your color changing and drawing code here.
-    update_game(&backBuffer);
+    update_game(&backBuffer, 1.0 / 60.0);
     CustomView *view = (CustomView *)self.window.contentView;
     [view setNeedsDisplay:YES];
     [self measureFrameRate];
@@ -131,7 +142,10 @@ CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* 
     NSTimeInterval elapsed = currentTime - startTime;
     
     if (elapsed >= 1.0) {
-        double frameRate = frameCount / elapsed;
+        if (!timePerFrame) {
+            timePerFrame = elapsed / frameCount;
+        }
+        f32 frameRate = frameCount / elapsed;
         NSLog(@"Current frame rate: %f fps", frameRate);
         
         frameCount = 0;
