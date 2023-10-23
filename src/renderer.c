@@ -37,9 +37,6 @@ internal void draw_quad(BackBuffer *buffer, Quad *quad)
         u32 *pixel = (u32 *)row;
         for (u32 x = 0; x < quad->dim.x; ++x)
         {
-            quad->color.r += 1;
-            quad->color.g += 2;
-            quad->color.b -= 4;
             *pixel++ = (alpha << 24 | quad->color.r << 16 |
                     quad->color.g << 8 |
                     quad->color.b);

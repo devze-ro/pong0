@@ -3,7 +3,7 @@
 mkdir -p build
 
 if [[ "$OSTYPE" == "msys" ]]; then
-    gcc src/win32_pong0.c -o ./build/win32_pong0.exe -lgdi32
+    gcc -g -O0 src/win32_pong0.c -o ./build/win32_pong0.exe -lgdi32 -lwinmm
 elif [[ "$OSTYPE" == "cygwin" ]]; then
     gcc src/win32_pong0.c -o ./build/win32_pong0.exe -lgdi32
 elif [[ "$OSTYPE" == "darwin"* ]]; then

@@ -64,7 +64,7 @@ int WINAPI WinMain(
         LPSTR command_line,
         int show_code)
 {
-    printf("Welcome to Pong0!");
+    printf("Welcome to Pong0!\n");
 
     WNDCLASS window_class = {0};
     window_class.style = CS_HREDRAW|CS_VREDRAW;
@@ -77,6 +77,8 @@ int WINAPI WinMain(
         return 1;
     }
 
+    RECT window_rect = {0, 0, 960, 720};
+    AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, FALSE);
     HWND window_handle = CreateWindowEx(
             0,
             window_class.lpszClassName,
@@ -84,8 +86,8 @@ int WINAPI WinMain(
             WS_OVERLAPPEDWINDOW|WS_VISIBLE,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            CW_USEDEFAULT,
-            CW_USEDEFAULT,
+            window_rect.right - window_rect.left,
+            window_rect.bottom - window_rect.top,
             0,
             0,
             instance,
@@ -107,10 +109,15 @@ int WINAPI WinMain(
     g_bitmap_info.bmiHeader.biBitCount = 32;
     g_bitmap_info.bmiHeader.biCompression = BI_RGB;
 
+    f32 target_seconds_per_frame = 1.0f / 60.0f;
+    timeBeginPeriod(1);
     g_is_game_running = 1;
 
     while (g_is_game_running)
     {
+        LARGE_INTEGER start_counter;
+        QueryPerformanceCounter(&start_counter);
+
         MSG message = {0};
         if (PeekMessage(&message, window_handle, 0, 0, PM_REMOVE))
         {
@@ -120,10 +127,40 @@ int WINAPI WinMain(
 
         HDC device_context = GetDC(window_handle);
 
-        update_game(&g_back_buffer);
+        update_game(&g_back_buffer, target_seconds_per_frame);
         blit(device_context, window_handle, &g_back_buffer);
 
         ReleaseDC(window_handle, device_context);
+
+        LARGE_INTEGER end_counter;
+        QueryPerformanceCounter(&end_counter);
+        LARGE_INTEGER counter_frequency;
+        QueryPerformanceFrequency(&counter_frequency);
+
+        f32 tick_count = (f32)(end_counter.QuadPart - start_counter.QuadPart);
+        f32 elapsed_seconds =
+            (f32)(end_counter.QuadPart - start_counter.QuadPart) /
+            (f32)counter_frequency.QuadPart;
+
+        if (elapsed_seconds < target_seconds_per_frame)
+        {
+            DWORD remaining_time_in_ms =
+                (DWORD)((target_seconds_per_frame - elapsed_seconds) * 1000.0f - 1);
+
+            if (remaining_time_in_ms > 0)
+            {
+                Sleep(remaining_time_in_ms);
+            }
+
+            while (elapsed_seconds < target_seconds_per_frame)
+            {
+                QueryPerformanceCounter(&end_counter);
+
+                tick_count = (f32)(end_counter.QuadPart - start_counter.QuadPart);
+                elapsed_seconds = tick_count / (f32)counter_frequency.QuadPart;
+            }
+            printf("frame duration in seconds: %.4f\n", elapsed_seconds);
+        }
     }
 
     return 0;

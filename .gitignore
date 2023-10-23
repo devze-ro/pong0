@@ -7,3 +7,4 @@ cscope.out
 tags
 CMakeLists.txt
 compile_commands.json
+.vimspector.json

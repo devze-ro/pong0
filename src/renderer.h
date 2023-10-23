@@ -24,6 +24,7 @@ typedef struct Quad
 {
     v2 dim;
     v2 pos;
+    v2 vel;
     Color color;
 } Quad;
 
