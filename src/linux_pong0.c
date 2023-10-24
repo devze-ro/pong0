@@ -1,9 +1,29 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/Xrandr.h>
 #include "pong0.h"
 #include "pong0.c"
+
+internal long get_nanoseconds_since_epoch() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000000000L + ts.tv_nsec;
+}
+
+internal int get_display_refresh_rate(Display *display) {
+    Window root = DefaultRootWindow(display);
+    XRRScreenConfiguration *config = XRRGetScreenInfo(display, root);
+
+    Rotation current_rotation;
+    int current_rate = XRRConfigCurrentRate(config);
+
+    XRRFreeScreenConfigInfo(config);
+
+    return current_rate;
+}
 
 int main()
 {
@@ -40,9 +60,15 @@ int main()
             ZPixmap, 0, NULL, back_buffer.width,
             back_buffer.height, 32, 0);
 
+    u32 display_refresh_rate = get_display_refresh_rate(display);
+    printf("display refresh rate: %d\n", display_refresh_rate);
+    long target_seconds_per_frame = (1000000000L / display_refresh_rate);
+
     b32 should_exit = 0;
     while (!should_exit)
     {
+        long frame_start_time = get_nanoseconds_since_epoch();
+
         while (XPending(display))
         {
             XNextEvent(display, &event);
@@ -54,12 +80,27 @@ int main()
             }
         }
 
-        update_game(&back_buffer);
+        update_game(&back_buffer, 1.0 / 60.0);
         image->data = (char*)back_buffer.memory;
 
         XPutImage(display, window, gc, image, 0, 0, 0, 0,
                 back_buffer.width, back_buffer.height);
         XFlush(display);
+
+        long frame_end_time = get_nanoseconds_since_epoch();
+        long frame_duration = frame_end_time - frame_start_time;
+
+        if (frame_duration < target_seconds_per_frame) {
+            struct timespec sleep_time;
+            sleep_time.tv_sec = 0;
+            sleep_time.tv_nsec = target_seconds_per_frame - frame_duration;
+            nanosleep(&sleep_time, NULL);
+        }
+
+        frame_end_time = get_nanoseconds_since_epoch();
+        frame_duration = frame_end_time - frame_start_time;
+        double frame_duration_seconds = (double)frame_duration / 1000000000.0;
+        printf("Frame Duration: %f seconds\n", frame_duration_seconds);
     }
 
     XDestroyImage(image);

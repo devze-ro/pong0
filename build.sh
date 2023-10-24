@@ -9,7 +9,7 @@ elif [[ "$OSTYPE" == "cygwin" ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     gcc -g -O0 -framework Cocoa -framework CoreVideo src/osx_pong0.m -o ./build/osx_pong0
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    gcc src/linux_pong0.c -o ./build/linux_pong0 -lX11
+    gcc src/linux_pong0.c -o ./build/linux_pong0 -lX11 -lXrandr
 else
     echo "Unsupported Platform: $OSTYPE"
 fi
