@@ -20,22 +20,23 @@ internal void init_back_buffer(
 
 internal void draw_quad(BackBuffer *buffer, Quad *quad)
 {
-    f32 half_width = quad->dim.x / 2;
-    f32 half_height = quad->dim.y / 2;
-
     v2 start_corner = {0};
-    start_corner.x = quad->pos.x - half_width;
-    start_corner.y = quad->pos.y - half_height;
+    start_corner.x = quad->pos.x - quad->half_dim.x;
+    start_corner.y = quad->pos.y - quad->half_dim.y;
 
     u32 start_byte_row = ((u32)start_corner.y) * buffer->pitch;
     u32 start_byte_col = ((u32)start_corner.x) * buffer->bytes_per_pixel; 
 
     u8 *row = (u8 *)(buffer->memory + start_byte_row + start_byte_col);
     u8 alpha = 255;
-    for (u32 y = 0; y < quad->dim.y; ++y)
+
+    f32 full_width = quad->half_dim.x * 2;
+    f32 full_height = quad->half_dim.y * 2;
+
+    for (u32 y = 0; y < full_height; ++y)
     {
         u32 *pixel = (u32 *)row;
-        for (u32 x = 0; x < quad->dim.x; ++x)
+        for (u32 x = 0; x < full_width; ++x)
         {
             *pixel++ = (alpha << 24 | quad->color.r << 16 |
                     quad->color.g << 8 |

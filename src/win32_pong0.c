@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <windows.h>
+#include <winuser.h>
 
+#include "defines.h"
 #include "pong0.h"
 #include "pong0.c"
 
@@ -58,6 +60,50 @@ LRESULT CALLBACK window_message_handler(
     return 0;
 }
 
+internal void set_key_changed_state(KeyState *key_state, b32 pressed_now)
+{
+    if (key_state->pressed != pressed_now)
+    {
+        key_state->pressed = pressed_now;
+        key_state->changed = 1;
+    }
+}
+
+internal void process_messages(InputState *input_state)
+{
+    MSG msg;
+    while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
+        u32 key_code = msg.wParam;
+        switch(msg.message)
+        {
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+                b32 pressed_now = (msg.message == WM_KEYDOWN);
+                if (key_code == 'W')
+                {
+                    set_key_changed_state(&input_state->w, pressed_now);
+                }
+                if (key_code == 'S')
+                {
+                    set_key_changed_state(&input_state->s, pressed_now);
+                }
+                if (key_code == VK_UP)
+                {
+                    set_key_changed_state(&input_state->up, pressed_now);
+                }
+                if (key_code == VK_DOWN)
+                {
+                    set_key_changed_state(&input_state->down, pressed_now);
+                }
+                break;
+
+            default:
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+        }
+    }
+}
+
 int WINAPI WinMain(
         HINSTANCE instance,
         HINSTANCE prev_instance,
@@ -109,25 +155,32 @@ int WINAPI WinMain(
     g_bitmap_info.bmiHeader.biBitCount = 32;
     g_bitmap_info.bmiHeader.biCompression = BI_RGB;
 
-    f32 target_seconds_per_frame = 1.0f / 60.0f;
+    DEVMODE devMode;
+    devMode.dmSize = sizeof(devMode);
+
+    if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode)) {
+        printf("Current screen refresh rate: %d Hz\n",
+                devMode.dmDisplayFrequency);
+    } else {
+        printf("Error retrieving display settings\n");
+    }
+
+    f32 target_seconds_per_frame = 1.0f / devMode.dmDisplayFrequency;
     timeBeginPeriod(1);
     g_is_game_running = 1;
+
+    InputState input_state = {0};
 
     while (g_is_game_running)
     {
         LARGE_INTEGER start_counter;
         QueryPerformanceCounter(&start_counter);
 
-        MSG message = {0};
-        if (PeekMessage(&message, window_handle, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&message);
-            DispatchMessage(&message);
-        }
+        process_messages(&input_state);
 
         HDC device_context = GetDC(window_handle);
 
-        update_game(&g_back_buffer, target_seconds_per_frame);
+        update_game(&g_back_buffer, &input_state, target_seconds_per_frame);
         blit(device_context, window_handle, &g_back_buffer);
 
         ReleaseDC(window_handle, device_context);
@@ -144,8 +197,8 @@ int WINAPI WinMain(
 
         if (elapsed_seconds < target_seconds_per_frame)
         {
-            DWORD remaining_time_in_ms =
-                (DWORD)((target_seconds_per_frame - elapsed_seconds) * 1000.0f - 1);
+            DWORD remaining_time_in_ms = (DWORD)(
+                    (target_seconds_per_frame - elapsed_seconds) * 1000.0f - 1);
 
             if (remaining_time_in_ms > 0)
             {

@@ -22,11 +22,19 @@ typedef struct BackBuffer
 
 typedef struct Quad
 {
-    v2 dim;
+    v2 half_dim;
+    v2 min;
+    v2 max;
     v2 pos;
     v2 vel;
     Color color;
 } Quad;
+
+typedef struct QuadMinMax
+{
+    v2 min;
+    v2 max;
+} QuadMinMax;
 
 internal void init_back_buffer(
         BackBuffer *buffer,
