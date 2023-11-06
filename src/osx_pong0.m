@@ -14,6 +14,7 @@ u32 frameCount = 0;
 NSTimeInterval startTime = 0;
 NSTimeInterval lastFrameRateCheck = 0;
 f32 timePerFrame = 0;
+InputState input_state = {0};
 
 #ifdef CVDISPLAYLINK_REFRESH
 CVDisplayLinkRef displayLink;
@@ -30,6 +31,66 @@ CVReturn MyDisplayLinkCallback(
 @end
 
 @implementation CustomView
+
+- (BOOL)acceptsFirstResponder {
+    return YES;
+}
+
+void setKeyChangedState(KeyState *key_state, b32 pressed_now) {
+    if (key_state->pressed != pressed_now)
+    {
+        key_state->pressed = pressed_now;
+        key_state->changed = 1;
+    }
+}
+
+- (void)keyDown:(NSEvent *)event {
+    NSString *characters = [event characters];
+    unichar character = [characters characterAtIndex:0];
+
+    b32 pressed_now = true;
+    switch (character) {
+        case NSUpArrowFunctionKey:
+            setKeyChangedState(&input_state.up, pressed_now);
+            break;
+        case NSDownArrowFunctionKey:
+            setKeyChangedState(&input_state.down, pressed_now);
+            break;
+        case 'w':
+            setKeyChangedState(&input_state.w, pressed_now);
+            break;
+        case 's':
+            setKeyChangedState(&input_state.s, pressed_now);
+            break;
+    }
+
+    // Refresh the view to reflect the paddle movement
+    [self setNeedsDisplay:YES];
+}
+
+- (void)keyUp:(NSEvent *)event {
+    NSString *characters = [event characters];
+    unichar character = [characters characterAtIndex:0];
+
+    b32 pressed_now = false;
+    switch (character) {
+        case NSUpArrowFunctionKey:
+            setKeyChangedState(&input_state.up, pressed_now);
+            break;
+        case NSDownArrowFunctionKey:
+            setKeyChangedState(&input_state.down, pressed_now);
+            break;
+        case 'w':
+            setKeyChangedState(&input_state.w, pressed_now);
+            break;
+        case 's':
+            setKeyChangedState(&input_state.s, pressed_now);
+            break;
+    }
+
+    // Refresh the view to reflect the paddle movement
+    [self setNeedsDisplay:YES];
+}
 
 - (void)drawRect:(NSRect)dirtyRect {
     CGContextRef context = [NSGraphicsContext currentContext].CGContext;
@@ -74,7 +135,9 @@ CVReturn MyDisplayLinkCallback(
 
     CustomView *view = [[CustomView alloc] initWithFrame:contentRect];
     [self.window setContentView:view];
+    [NSApp activateIgnoringOtherApps:YES];
     [self.window makeKeyAndOrderFront:self];
+    [self.window makeFirstResponder:view];
 
     v2u window_dimensions = (v2u){0};
     window_dimensions.x = 960;
@@ -111,7 +174,7 @@ CVReturn MyDisplayLinkCallback(
 #ifdef CVDISPLAYLINK_REFRESH
 CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext) {
     AppDelegate *self = (__bridge AppDelegate *)displayLinkContext;
-    update_game(&backBuffer, timePerFrame);
+    update_game(&backBuffer, &input_state, timePerFrame);
     CustomView *view = (CustomView *)self.window.contentView;
     dispatch_async(dispatch_get_main_queue(), ^{
         [view setNeedsDisplay:YES];
@@ -161,6 +224,7 @@ int main(int argc, const char * argv[]) {
 
     @autoreleasepool {
         NSApplication *app = [NSApplication sharedApplication];
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
         AppDelegate *appDelegate = [[AppDelegate alloc] init];
 
         [app setDelegate:appDelegate];
