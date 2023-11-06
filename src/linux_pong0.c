@@ -25,6 +25,15 @@ internal int get_display_refresh_rate(Display *display) {
     return current_rate;
 }
 
+internal void set_key_changed_state(KeyState *key_state, b32 pressed_now)
+{
+    if (key_state->pressed != pressed_now)
+    {
+        key_state->pressed = pressed_now;
+        key_state->changed = 1;
+    }
+}
+
 int main()
 {
     XEvent event;
@@ -46,7 +55,7 @@ int main()
 
     XStoreName(display, window, "pong0");
 
-    XSelectInput(display, window, KeyPressMask);
+    XSelectInput(display, window, KeyPressMask | KeyReleaseMask);
     XMapWindow(display, window);
 
     GC gc = XCreateGC(display, window, 0, NULL);
@@ -64,6 +73,8 @@ int main()
     printf("display refresh rate: %d\n", display_refresh_rate);
     long target_seconds_per_frame = (1000000000L / display_refresh_rate);
 
+    InputState input_state = {0};
+
     b32 should_exit = 0;
     while (!should_exit)
     {
@@ -78,9 +89,32 @@ int main()
             {
                 should_exit = 1;
             }
+
+            if (event.type == KeyPress || event.type == KeyRelease)
+            {
+                b32 pressed_now = (event.type == KeyPress);
+
+                KeySym key = XLookupKeysym(&event.xkey, 0);
+                switch (key) {
+                    case XK_w:
+                        set_key_changed_state(&input_state.w, pressed_now);
+                        break;
+                    case XK_s:
+                        set_key_changed_state(&input_state.s, pressed_now);
+                        break;
+                    case XK_Up:
+                        set_key_changed_state(&input_state.up, pressed_now);
+                        break;
+                    case XK_Down:
+                        set_key_changed_state(&input_state.down, pressed_now);
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
 
-        update_game(&back_buffer, 1.0 / 60.0);
+        update_game(&back_buffer, &input_state, 1.0 / 60.0);
         image->data = (char*)back_buffer.memory;
 
         XPutImage(display, window, gc, image, 0, 0, 0, 0,
