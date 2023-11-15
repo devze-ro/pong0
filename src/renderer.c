@@ -30,6 +30,9 @@ internal void draw_quad(BackBuffer *buffer, Quad *quad)
     v2 end_corner = {0};
     start_corner.x = quad->pos.x - quad->half_dim.x;
     start_corner.y = quad->pos.y - quad->half_dim.y;
+    end_corner.x = quad->pos.x + quad->half_dim.x;
+    end_corner.y = quad->pos.y + quad->half_dim.y;
+
     start_corner.x = start_corner.x < 0 ? 0 : start_corner.x;
     start_corner.y = start_corner.y < 0 ? 0 : start_corner.y;
 
@@ -38,9 +41,13 @@ internal void draw_quad(BackBuffer *buffer, Quad *quad)
 
     u8 *row = (u8 *)(buffer->memory + start_byte_row + start_byte_col);
 
-    // TODO: Add max buffer boundary check.
-    f32 full_width = quad->half_dim.x * 2;
-    f32 full_height = quad->half_dim.y * 2;
+    end_corner.x = end_corner.x >= buffer->width ? buffer->width - 1 :
+        end_corner.x;
+    end_corner.y = end_corner.y >= buffer->height ? buffer->height - 1 :
+        end_corner.y;
+
+    f32 full_width = end_corner.x - start_corner.x;
+    f32 full_height = end_corner.y - start_corner.y;
 
     for (u32 y = 0; y < full_height; ++y)
     {

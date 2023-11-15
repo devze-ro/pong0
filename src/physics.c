@@ -35,7 +35,8 @@ internal Quad minkowski_sum(Quad *a, Quad *b)
 
 internal v2 get_abs_pos_from_rel_pos(f32 width, f32 height, v2 ref, v2 direction)
 {
-    v2 pos = (v2){ ref.x + (direction.x * width), ref.y + (direction.y * height) };
+    v2 pos = (v2){ ref.x + (direction.x * width / 2),
+        ref.y + (direction.y * height / 2) };
     return pos;
 }
 

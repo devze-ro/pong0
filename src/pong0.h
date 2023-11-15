@@ -28,7 +28,13 @@ typedef enum Direction
 
 internal void init_game(BackBuffer *back_buffer, v2u *window_dimensions);
 
-internal void update_game(BackBuffer *back_buffer, InputState *input_state, f32 dt);
+internal void update_game(BackBuffer *back_buffer, InputState *input_state,
+        f32 dt);
+
+internal void render_game(
+        BackBuffer *back_buffer,
+        InputState *input_state,
+        b32 is_game_paused);
 
 #define PONG0_H
 #endif

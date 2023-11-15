@@ -8,6 +8,7 @@
 #include "pong0.c"
 
 global b32 g_is_game_running;
+global b32 g_is_game_paused;
 global BackBuffer g_back_buffer;
 global BITMAPINFO g_bitmap_info;
 
@@ -79,21 +80,36 @@ internal void process_messages(InputState *input_state)
             case WM_KEYDOWN:
             case WM_KEYUP:
                 b32 pressed_now = (msg.message == WM_KEYDOWN);
-                if (key_code == 'W')
+                if (!g_is_game_paused)
                 {
-                    set_key_changed_state(&input_state->w, pressed_now);
+                    if (key_code == 'W')
+                    {
+                        set_key_changed_state(&input_state->w, pressed_now);
+                    }
+                    if (key_code == 'S')
+                    {
+                        set_key_changed_state(&input_state->s, pressed_now);
+                    }
+                    if (key_code == VK_UP)
+                    {
+                        set_key_changed_state(&input_state->up, pressed_now);
+                    }
+                    if (key_code == VK_DOWN)
+                    {
+                        set_key_changed_state(&input_state->down, pressed_now);
+                    }
                 }
-                if (key_code == 'S')
+
+                if (key_code == 'P' && pressed_now)
                 {
-                    set_key_changed_state(&input_state->s, pressed_now);
-                }
-                if (key_code == VK_UP)
-                {
-                    set_key_changed_state(&input_state->up, pressed_now);
-                }
-                if (key_code == VK_DOWN)
-                {
-                    set_key_changed_state(&input_state->down, pressed_now);
+                    if (g_is_game_running && g_is_game_paused)
+                    {
+                        g_is_game_paused = 0;
+                    }
+                    else if (g_is_game_running && !g_is_game_paused)
+                    {
+                        g_is_game_paused = 1;
+                    }
                 }
                 break;
 
@@ -104,6 +120,12 @@ internal void process_messages(InputState *input_state)
     }
 }
 
+DWORD WINAPI win32_init_audio(LPVOID lpParam)
+{
+    init_audio();
+    return 0;
+}
+
 int WINAPI WinMain(
         HINSTANCE instance,
         HINSTANCE prev_instance,
@@ -111,6 +133,11 @@ int WINAPI WinMain(
         int show_code)
 {
     printf("Welcome to Pong0!\n");
+
+    // TODO (devze_ro): Initializing audio in a separate thread else it slows
+    // the game initialization. Is asynchronous loading required for such small
+    // audio files?
+    HANDLE thread = CreateThread(NULL, 0, win32_init_audio, NULL, 0, NULL);
 
     WNDCLASS window_class = {0};
     window_class.style = CS_HREDRAW|CS_VREDRAW;
@@ -178,11 +205,14 @@ int WINAPI WinMain(
 
         process_messages(&input_state);
 
+        if (!g_is_game_paused)
+        {
+            update_game(&g_back_buffer, &input_state, target_seconds_per_frame);
+        }
+
+        render_game(&g_back_buffer, &input_state, g_is_game_paused);
         HDC device_context = GetDC(window_handle);
-
-        update_game(&g_back_buffer, &input_state, target_seconds_per_frame);
         blit(device_context, window_handle, &g_back_buffer);
-
         ReleaseDC(window_handle, device_context);
 
         LARGE_INTEGER end_counter;

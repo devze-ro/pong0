@@ -7,6 +7,9 @@
 
 #include "renderer.c"
 #include "physics.c"
+#include "audio.c"
+
+#define MAX_SPEED_Y 1000
 
 global Quad g_window;
 global Quad g_top_wall;
@@ -20,6 +23,10 @@ global b32 g_is_ball_paused;
 global f32 g_ball_pause_duration;
 global u32 g_left_score;
 global u32 g_right_score;
+global char g_left_score_str[12];
+global char g_right_score_str[12];
+global char g_right_score_str[12];
+global char *g_pause_message = "Game is paused. Press 'P' to resume.";
 
 internal void init_game(BackBuffer *back_buffer, v2u *window_dimensions)
 {
@@ -53,7 +60,7 @@ internal void init_game(BackBuffer *back_buffer, v2u *window_dimensions)
 
     g_ball.half_dim = (v2){ 10.0, 10.0 };
     g_ball.pos = (v2){ back_buffer_center.x, back_buffer_center.y };
-    g_ball.vel = (v2){ 400.0, 400.0 };
+    g_ball.vel = (v2){ 500.0, 0 };
     g_ball.color = (Color){ 255, 255, 255, 255 };
 
     g_left_paddle.half_dim = (v2){ 10.0, 50.0 };
@@ -68,6 +75,9 @@ internal void init_game(BackBuffer *back_buffer, v2u *window_dimensions)
 
     g_ball_pause_duration = 0.5f;
     g_is_ball_paused = 0;
+
+    sprintf(g_left_score_str, "%d", 0);
+    sprintf(g_right_score_str, "%d", 0);
 }
 
 internal void handle_paddle_ball_collision(Quad *paddle, v2 *ball_dpos, f32 dt)
@@ -88,6 +98,7 @@ internal void handle_paddle_ball_collision(Quad *paddle, v2 *ball_dpos, f32 dt)
         }
         ball_dpos->x = g_ball.vel.x * dt;
         ball_dpos->y = g_ball.vel.y * dt;
+        play_ball_hit_sound();
     }
 }
 
@@ -135,10 +146,8 @@ internal void update_game(
         InputState *input_state, 
         f32 dt)
 {
-    char left_score_str[12];
-    sprintf(left_score_str, "%d", g_left_score);
-    char right_score_str[12];
-    sprintf(right_score_str, "%d", g_right_score);
+    sprintf(g_left_score_str, "%d", g_left_score);
+    sprintf(g_right_score_str, "%d", g_right_score);
     if (g_is_ball_paused)
     {
         g_ball_pause_duration -= dt;
@@ -170,13 +179,13 @@ internal void update_game(
             if (g_ball.pos.x > back_buffer->width)
             {
                 g_left_score++;
-                sprintf(left_score_str, "%d", g_left_score);
+                sprintf(g_left_score_str, "%d", g_left_score);
                 printf("player 1 score = %d\n", g_left_score);
             }
             if (g_ball.pos.x < 0)
             {
                 g_right_score++;
-                sprintf(right_score_str, "%d", g_right_score);
+                sprintf(g_right_score_str, "%d", g_right_score);
                 printf("player 2 score = %d\n", g_right_score);
             }
             f32 ball_pos_max = 2 * (g_window.half_dim.y - g_bottom_wall.half_dim.y -
@@ -186,6 +195,8 @@ internal void update_game(
             g_ball.pos.x = g_window.pos.x;
             g_ball.pos.y = (rand() % (i32)(ball_pos_max - ball_pos_min + 1)) +
                 ball_pos_min;
+
+            play_score_sound();
             g_is_ball_paused = 1;
         }
     }
@@ -206,23 +217,40 @@ internal void update_game(
     {
         update_paddle_position(&g_right_paddle, Down, back_buffer, dt);
     }
+}
 
+internal void render_game(
+        BackBuffer *back_buffer,
+        InputState *input_state,
+        b32 is_game_paused)
+{
+    if (is_game_paused)
+    {
+        display_text(back_buffer, g_pause_message,
+                (v2){ 10, back_buffer->height - 80 }, (v2){ 1, 1 }, 30);
+    }
+    else
+    {
+        draw_quad(back_buffer, &g_window);
+        draw_dotted_line(back_buffer, &g_dotted_line);
+        display_text(back_buffer, g_left_score_str,
+                (v2){ g_window.half_dim.x - 40,
+                (g_top_wall.half_dim.y * 2) + 10 },
+                (v2){ -1, 1 }, 80);
+        display_text(back_buffer, g_right_score_str,
+                (v2){ g_window.half_dim.x + 40,
+                (g_top_wall.half_dim.y * 2) + 10 },
+                (v2){ 1, 1 }, 80);
+        draw_quad(back_buffer, &g_top_wall);
+        draw_quad(back_buffer, &g_bottom_wall);
+        draw_quad(back_buffer, &g_ball);
+        draw_quad(back_buffer, &g_left_paddle);
+        draw_quad(back_buffer, &g_right_paddle);
 
-    draw_quad(back_buffer, &g_window);
-    draw_dotted_line(back_buffer, &g_dotted_line);
-    display_text(back_buffer, left_score_str, (v2){ g_window.half_dim.x - 10,
-            (g_top_wall.half_dim.y * 2) }, (v2){ -1, 1 }, 80);
-    display_text(back_buffer, right_score_str, (v2){ g_window.half_dim.x + 10,
-            (g_top_wall.half_dim.y * 2) }, (v2){ 1, 1 }, 80);
-    draw_quad(back_buffer, &g_top_wall);
-    draw_quad(back_buffer, &g_bottom_wall);
-    draw_quad(back_buffer, &g_ball);
-    draw_quad(back_buffer, &g_left_paddle);
-    draw_quad(back_buffer, &g_right_paddle);
-
-    input_state->w.changed = 0;
-    input_state->s.changed = 0;
-    input_state->up.changed = 0;
-    input_state->down.changed = 0;
+        input_state->w.changed = 0;
+        input_state->s.changed = 0;
+        input_state->up.changed = 0;
+        input_state->down.changed = 0;
+    }
 }
 
