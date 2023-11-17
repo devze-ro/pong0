@@ -34,8 +34,19 @@ internal void set_key_changed_state(KeyState *key_state, b32 pressed_now)
     }
 }
 
+void* linux_init_audio(void* arg)
+{
+    init_audio();
+}
+
 int main()
 {
+    pthread_t audio_thread;
+    int result = pthread_create(&audio_thread, NULL, linux_init_audio, NULL);
+    if (result != 0) {
+        printf("Audio thread creation failed!");
+    }
+    
     XEvent event;
 
     Display* display = XOpenDisplay(NULL);
@@ -76,6 +87,7 @@ int main()
     InputState input_state = {0};
 
     b32 should_exit = 0;
+    b32 is_paused = 0;
     while (!should_exit)
     {
         long frame_start_time = get_nanoseconds_since_epoch();
@@ -97,24 +109,46 @@ int main()
                 KeySym key = XLookupKeysym(&event.xkey, 0);
                 switch (key) {
                     case XK_w:
-                        set_key_changed_state(&input_state.w, pressed_now);
+                        if (!is_paused)
+                        {
+                            set_key_changed_state(&input_state.w, pressed_now);
+                        }
                         break;
                     case XK_s:
-                        set_key_changed_state(&input_state.s, pressed_now);
+                        if (!is_paused)
+                        {
+                            set_key_changed_state(&input_state.s, pressed_now);
+                        }
                         break;
                     case XK_Up:
-                        set_key_changed_state(&input_state.up, pressed_now);
+                        if (!is_paused)
+                        {
+                            set_key_changed_state(&input_state.up, pressed_now);
+                        }
                         break;
                     case XK_Down:
-                        set_key_changed_state(&input_state.down, pressed_now);
+                        if (!is_paused)
+                        {
+                            set_key_changed_state(&input_state.down, pressed_now);
+                        }
                         break;
+                    case XK_p:
+                        if (pressed_now)
+                        {
+                            is_paused = is_paused ? 0 : 1;
+                        }
                     default:
                         break;
                 }
             }
         }
 
-        update_game(&back_buffer, &input_state, 1.0 / 60.0);
+        if (!is_paused)
+        {
+            update_game(&back_buffer, &input_state, 1.0 / 60.0);
+        }
+        render_game(&back_buffer, &input_state, is_paused);
+
         image->data = (char*)back_buffer.memory;
 
         XPutImage(display, window, gc, image, 0, 0, 0, 0,

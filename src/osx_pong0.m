@@ -52,10 +52,14 @@ void setKeyChangedState(KeyState *key_state, b32 pressed_now) {
     b32 pressed_now = true;
     switch (character) {
         case NSUpArrowFunctionKey:
-            setKeyChangedState(&input_state.up, pressed_now);
+            if (!isGamePaused) {
+                setKeyChangedState(&input_state.up, pressed_now);
+            }
             break;
         case NSDownArrowFunctionKey:
-            setKeyChangedState(&input_state.down, pressed_now);
+            if (!isGamePaused) {
+                setKeyChangedState(&input_state.down, pressed_now);
+            }
             break;
         case 'w':
             if (!isGamePaused) {
@@ -69,6 +73,7 @@ void setKeyChangedState(KeyState *key_state, b32 pressed_now) {
             break;
         case 'p':
             isGamePaused = isGamePaused ? 0 : 1;
+            break;
     }
 
     // Refresh the view to reflect the paddle movement
