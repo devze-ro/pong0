@@ -7,7 +7,7 @@ global ma_engine g_engine;
 global ma_sound g_ball_hit_sound;
 global ma_sound g_score_sound;
 
-internal void load_sound_effect(u8 *filePath, ma_sound* pSound) {
+internal void load_sound_effect(const char *filePath, ma_sound* pSound) {
     ma_sound_init_from_file(&g_engine, filePath, MA_SOUND_FLAG_DECODE, NULL, NULL,
             pSound);
 }

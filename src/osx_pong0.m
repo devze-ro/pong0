@@ -9,6 +9,7 @@
 #include <CoreVideo/CoreVideo.h>
 #endif
 
+b32 isGamePaused = 0;
 BackBuffer backBuffer;
 u32 frameCount = 0;
 NSTimeInterval startTime = 0;
@@ -57,11 +58,17 @@ void setKeyChangedState(KeyState *key_state, b32 pressed_now) {
             setKeyChangedState(&input_state.down, pressed_now);
             break;
         case 'w':
-            setKeyChangedState(&input_state.w, pressed_now);
+            if (!isGamePaused) {
+                setKeyChangedState(&input_state.w, pressed_now);
+            }
             break;
         case 's':
-            setKeyChangedState(&input_state.s, pressed_now);
+            if (!isGamePaused) {
+                setKeyChangedState(&input_state.s, pressed_now);
+            }
             break;
+        case 'p':
+            isGamePaused = isGamePaused ? 0 : 1;
     }
 
     // Refresh the view to reflect the paddle movement
@@ -81,10 +88,14 @@ void setKeyChangedState(KeyState *key_state, b32 pressed_now) {
             setKeyChangedState(&input_state.down, pressed_now);
             break;
         case 'w':
-            setKeyChangedState(&input_state.w, pressed_now);
+            if (!isGamePaused) {
+                setKeyChangedState(&input_state.w, pressed_now);
+            }
             break;
         case 's':
-            setKeyChangedState(&input_state.s, pressed_now);
+            if (!isGamePaused) {
+                setKeyChangedState(&input_state.s, pressed_now);
+            }
             break;
     }
 
@@ -119,6 +130,9 @@ void setKeyChangedState(KeyState *key_state, b32 pressed_now) {
 
 @implementation AppDelegate
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            init_audio();
+    });
     NSRect contentRect = NSMakeRect(0, 0, 960, 720);
     self.window = [[NSWindow alloc] initWithContentRect:contentRect styleMask:(
             NSWindowStyleMaskTitled |
@@ -174,7 +188,12 @@ void setKeyChangedState(KeyState *key_state, b32 pressed_now) {
 #ifdef CVDISPLAYLINK_REFRESH
 CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext) {
     AppDelegate *self = (__bridge AppDelegate *)displayLinkContext;
-    update_game(&backBuffer, &input_state, timePerFrame);
+
+    if (!isGamePaused) {
+        update_game(&backBuffer, &input_state, timePerFrame);
+    }
+    render_game(&backBuffer, &input_state, isGamePaused);
+
     CustomView *view = (CustomView *)self.window.contentView;
     dispatch_async(dispatch_get_main_queue(), ^{
         [view setNeedsDisplay:YES];
