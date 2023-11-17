@@ -4,6 +4,8 @@ mkdir -p build
 
 if [[ "$OSTYPE" == "msys" ]]; then
     gcc -g -O0 src/win32_pong0.c -o ./build/win32_pong0.exe -lgdi32 -lwinmm
+    # To suppress console window:
+    # gcc -g -O0 src/win32_pong0.c -o ./build/win32_pong0.exe -lgdi32 -lwinmm -mwindows
 elif [[ "$OSTYPE" == "cygwin" ]]; then
     gcc src/win32_pong0.c -o ./build/win32_pong0.exe -lgdi32 -lwinmm
 elif [[ "$OSTYPE" == "darwin"* ]]; then
