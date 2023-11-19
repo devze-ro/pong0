@@ -87,7 +87,11 @@ int main()
     InputState input_state = {0};
 
     b32 should_exit = 0;
-    b32 is_paused = 0;
+    b32 has_game_started = 0;
+    b32 is_game_paused = 0;
+    b32 is_game_over = 0;
+    b32 is_single_player = 1;
+    b32 is_sound_muted = 0;
     while (!should_exit)
     {
         long frame_start_time = get_nanoseconds_since_epoch();
@@ -109,45 +113,80 @@ int main()
                 KeySym key = XLookupKeysym(&event.xkey, 0);
                 switch (key) {
                     case XK_w:
-                        if (!is_paused)
+                        if (has_game_started && !is_game_paused &&
+                                !is_game_over)
                         {
                             set_key_changed_state(&input_state.w, pressed_now);
                         }
                         break;
                     case XK_s:
-                        if (!is_paused)
+                        if (has_game_started && !is_game_paused &&
+                                !is_game_over)
                         {
                             set_key_changed_state(&input_state.s, pressed_now);
                         }
                         break;
                     case XK_Up:
-                        if (!is_paused)
+                        if (has_game_started && !is_game_paused &&
+                                !is_game_over)
                         {
                             set_key_changed_state(&input_state.up, pressed_now);
                         }
                         break;
                     case XK_Down:
-                        if (!is_paused)
+                        if (has_game_started && !is_game_paused &&
+                                !is_game_over)
                         {
-                            set_key_changed_state(&input_state.down, pressed_now);
+                            set_key_changed_state(&input_state.down,
+                                    pressed_now);
                         }
                         break;
                     case XK_p:
+                        if (has_game_started && pressed_now)
+                        {
+                            is_game_paused = is_game_paused ? 0 : 1;
+                        }
+                        break;
+                    case XK_r:
+                        if (is_game_over && pressed_now)
+                        {
+                            is_game_over = 0;
+                            init_dynamic_props(&back_buffer);
+                        }
+                        break;
+                    case XK_m:
                         if (pressed_now)
                         {
-                            is_paused = is_paused ? 0 : 1;
+                            is_sound_muted = is_sound_muted ? 0 : 1;
                         }
+                        break;
+                    case XK_1:
+                        if (pressed_now)
+                        {
+                            is_single_player = 1;
+                            has_game_started = 1;
+                        }
+                        break;
+                    case XK_2:
+                        if (pressed_now)
+                        {
+                            is_single_player = 0;
+                            has_game_started = 1;
+                        }
+                        break;
                     default:
                         break;
                 }
             }
         }
 
-        if (!is_paused)
+        if (has_game_started && !is_game_paused && !is_game_over)
         {
-            update_game(&back_buffer, &input_state, 1.0 / 60.0);
+            update_game(&back_buffer, &input_state, 1.0 / 60.0, &is_game_over,
+                    is_single_player, is_sound_muted);
         }
-        render_game(&back_buffer, &input_state, is_paused);
+        render_game(&back_buffer, &input_state, has_game_started,
+                is_game_paused, is_game_over);
 
         image->data = (char*)back_buffer.memory;
 
